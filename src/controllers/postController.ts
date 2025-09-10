@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
 import pool from '../db';
 
-// --- LOGIC TO GET ALL POSTS ---
 export const getAllPosts = async (req: Request, res: Response) => {
     try {
-        // This SQL query joins posts with users and counts upvotes for each post.
-        const [posts] = await pool.query(`
+        // FIX: Changed how we get the result from the query
+        const { rows: posts } = await pool.query(`
             SELECT 
                 p.id, 
                 p.title, 
@@ -19,48 +18,39 @@ export const getAllPosts = async (req: Request, res: Response) => {
             GROUP BY p.id
             ORDER BY upvotes DESC;
         `);
-        res.status(200).json(posts);
+        res.json(posts);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error fetching posts.' });
+        res.status(500).json({ error: 'Server error fetching posts.' });
     }
 };
 
-// --- LOGIC TO CREATE A NEW POST ---
 export const createPost = async (req: Request, res: Response) => {
-    // We get the title and url from the user's request
     const { title, url } = req.body;
-    // We get the userId from our 'protect' middleware!
     const userId = req.userId;
-
+    if (!title || !url) {
+        return res.status(400).json({ message: 'Title and URL are required.' });
+    }
     try {
         await pool.query(
             'INSERT INTO posts (title, url, user_id) VALUES (?, ?, ?)',
             [title, url, userId]
         );
-        res.status(201).json({ message: 'Post created successfully!' });
+        res.status(201).json({ message: 'Post created!' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error creating post.' });
+        res.status(500).json({ error: 'Server error creating post.' });
     }
 };
 
-// --- LOGIC TO UPVOTE A POST ---
 export const upvotePost = async (req: Request, res: Response) => {
-    // We get the post's ID from the URL (e.g., /api/posts/1/upvote)
     const { postId } = req.params;
-    // We get the user's ID from our 'protect' middleware
     const userId = req.userId;
-
     try {
-        // The PRIMARY KEY on the 'upvotes' table prevents a user from upvoting the same post twice.
         await pool.query(
             'INSERT INTO upvotes (user_id, post_id) VALUES (?, ?)',
             [userId, postId]
         );
         res.status(200).json({ message: 'Post upvoted!' });
     } catch (error) {
-        // If a "duplicate entry" error occurs, it means the user already voted.
         res.status(409).json({ message: 'You have already upvoted this post.' });
     }
 };
