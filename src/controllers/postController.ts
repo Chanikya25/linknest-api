@@ -3,20 +3,23 @@ import pool from '../db';
 
 export const getAllPosts = async (req: Request, res: Response) => {
     try {
-        // This query has no placeholders, so it was already okay
         const { rows: posts } = await pool.query(`
             SELECT 
-                p.id, p.title, p.url, p.created_at, u.email as author_email,
+                p.id, 
+                p.title, 
+                p.url, 
+                p.created_at, 
+                u.email as author_email,
                 COUNT(up.post_id) as upvotes
             FROM posts p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN upvotes up ON p.id = up.post_id
-            GROUP BY p.id
+            GROUP BY p.id, u.email  -- <-- ADD u.email HERE
             ORDER BY upvotes DESC;
         `);
         res.json(posts);
     } catch (error) {
-        console.error(error); // Log the actual error
+        console.error(error);
         res.status(500).json({ error: 'Server error fetching posts.' });
     }
 };
