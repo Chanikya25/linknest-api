@@ -9,15 +9,20 @@ export const register = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Email and password are required.' });
     }
     try {
-        // FIX: Changed how we get the result from the query
-        const { rows: existingUsers } = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+        const { rows: existingUsers } = await pool.query(
+            'SELECT * FROM users WHERE email = $1', // <-- Changed ? to $1
+            [email]
+        );
         if (existingUsers.length > 0) {
             return res.status(409).json({ message: 'Email already in use.' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
-        await pool.query('INSERT INTO users (email, password_hash) VALUES (?, ?)', [email, passwordHash]);
+        await pool.query(
+            'INSERT INTO users (email, password_hash) VALUES ($1, $2)', // <-- Changed ?, ?
+            [email, passwordHash]
+        );
 
         res.status(201).json({ message: 'User created successfully!' });
     } catch (error) {
@@ -32,8 +37,10 @@ export const login = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Email and password are required.' });
     }
     try {
-        // FIX: Changed how we get the result from the query
-        const { rows: users } = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+        const { rows: users } = await pool.query(
+            'SELECT * FROM users WHERE email = $1', // <-- Changed ? to $1
+            [email]
+        );
 
         if (users.length === 0) {
             return res.status(404).json({ message: 'User not found.' });

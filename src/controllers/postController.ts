@@ -3,14 +3,10 @@ import pool from '../db';
 
 export const getAllPosts = async (req: Request, res: Response) => {
     try {
-        // FIX: Changed how we get the result from the query
+        // This query has no placeholders, so it was already okay
         const { rows: posts } = await pool.query(`
             SELECT 
-                p.id, 
-                p.title, 
-                p.url, 
-                p.created_at, 
-                u.email as author_email,
+                p.id, p.title, p.url, p.created_at, u.email as author_email,
                 COUNT(up.post_id) as upvotes
             FROM posts p
             JOIN users u ON p.user_id = u.id
@@ -20,6 +16,7 @@ export const getAllPosts = async (req: Request, res: Response) => {
         `);
         res.json(posts);
     } catch (error) {
+        console.error(error); // Log the actual error
         res.status(500).json({ error: 'Server error fetching posts.' });
     }
 };
@@ -32,11 +29,12 @@ export const createPost = async (req: Request, res: Response) => {
     }
     try {
         await pool.query(
-            'INSERT INTO posts (title, url, user_id) VALUES (?, ?, ?)',
+            'INSERT INTO posts (title, url, user_id) VALUES ($1, $2, $3)', // <-- Changed ?, ?, ?
             [title, url, userId]
         );
         res.status(201).json({ message: 'Post created!' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Server error creating post.' });
     }
 };
@@ -46,7 +44,7 @@ export const upvotePost = async (req: Request, res: Response) => {
     const userId = req.userId;
     try {
         await pool.query(
-            'INSERT INTO upvotes (user_id, post_id) VALUES (?, ?)',
+            'INSERT INTO upvotes (user_id, post_id) VALUES ($1, $2)', // <-- Changed ?, ?
             [userId, postId]
         );
         res.status(200).json({ message: 'Post upvoted!' });
